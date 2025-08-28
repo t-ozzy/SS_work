@@ -137,8 +137,8 @@ def gamma_correction(img, gamma=1.2):
 
 
 # 画像を読み込む
-img_1 = cv2.imread("./img/set2_a.png")
-img_2 = cv2.imread("./img/set2_b.png")
+img_1 = cv2.imread("../img/set2_a.png")
+img_2 = cv2.imread("../img/set2_b.png")
 if img_1.shape != img_2.shape:
     img_1 = cv2.resize(img_1, (img_2.shape[1], img_2.shape[0]))
 
@@ -164,66 +164,57 @@ gray_2 = cv2.GaussianBlur(gray_2, (15, 15), 0)
 if DEBUG:
     cv2.imwrite("blur_1.png", gray_1)
     cv2.imwrite("blur_2.png", gray_2)
-    blur_1_dark = cv2.convertScaleAbs(gray_1, alpha=1.0, beta=-50)
-    cv2.imwrite("blur_1_dark.png", blur_1_dark)
-    blur_1_dark = cv2.convertScaleAbs(gray_1, alpha=1.0, beta=50)
-    cv2.imwrite("blur_1_dark_2.png", blur_1_dark)
-    blur_1_dark = cv2.convertScaleAbs(gray_1, alpha=-1.0, beta=-50)
-    cv2.imwrite("blur_1_dark_3.png", blur_1_dark)
-    blur_1_dark = cv2.convertScaleAbs(gray_1, alpha=3.0, beta=50)
-    cv2.imwrite("blur_1_dark_4.png", blur_1_dark)
 
+# コントラスト限定適応ヒストグラム平坦化
+clahe = cv2.createCLAHE(clipLimit=0.1, tileGridSize=(8, 8))
+gray_1 = clahe.apply(gray_1)
+gray_2 = clahe.apply(gray_2)
+# gray_1 = cv2.equalizeHist(gray_1)
+# gray_2 = cv2.equalizeHist(gray_2)
+if DEBUG:
+    cv2.imwrite("clahe_1.png", gray_1)
+    cv2.imwrite("clahe_2.png", gray_2)
 
-# # コントラスト限定適応ヒストグラム平坦化
-# clahe = cv2.createCLAHE(clipLimit=8.1, tileGridSize=(8, 8))
-# gray_1 = clahe.apply(gray_1)
-# gray_2 = clahe.apply(gray_2)
-# # gray_1 = cv2.equalizeHist(gray_1)
-# # gray_2 = cv2.equalizeHist(gray_2)
-# if DEBUG:
-#     cv2.imwrite("clahe_1.png", gray_1)
-#     cv2.imwrite("clahe_2.png", gray_2)
+# 画像を引き算
+img_diff = cv2.absdiff(gray_1, gray_2)
+if DEBUG:
+    cv2.imwrite("diff.png", img_diff)
 
-# # 画像を引き算
-# img_diff = cv2.absdiff(gray_1, gray_2)
-# if DEBUG:
-#     cv2.imwrite("diff.png", img_diff)
-
-# # 2値化
-# # img_th = cv2.adaptiveThreshold(
-# #     img_diff, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
-# # )
-# _, img_th = cv2.threshold(img_diff, 40, 255, cv2.THRESH_BINARY)  # 閾値40は手作業
-# if DEBUG:
-#     cv2.imwrite("th.png", img_th)
-
-# img_th = cv2.medianBlur(img_th, 5)
-
-# # 有効領域マスクを作成
-# if homo_matrix is not None:
-#     mask = np.full(img_2.shape[:2], 255, dtype=np.uint8)
-#     warped_mask = cv2.warpPerspective(
-#         mask, homo_matrix, (img_2.shape[1], img_2.shape[0])
-#     )
-#     # マスクを収縮させて削る面積を増やす
-#     warped_mask = cv2.erode(warped_mask, (5, 5), iterations=10)
-#     # 二値画像の余白を黒で塗りつぶす
-#     img_th[warped_mask == 0] = 0
-
-# if DEBUG:
-#     cv2.imwrite("after.png", img_th)
-
-# # 輪郭を検出
-# contours, hierarchy = cv2.findContours(
-#     img_th, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+# 2値化
+# img_th = cv2.adaptiveThreshold(
+#     img_diff, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
 # )
+_, img_th = cv2.threshold(img_diff, 40, 255, cv2.THRESH_BINARY)  # 閾値40は手作業
+if DEBUG:
+    cv2.imwrite("th.png", img_th)
 
-# # 閾値以上の差分を四角で囲う
-# # for i, cnt in enumerate(contours):
-# #     x, y, width, height = cv2.boundingRect(cnt)
-# #     if width > 20 or height > 20:
-# #         cv2.rectangle(img_1, (x, y), (x + width, y + height), (0, 0, 255), 2)
-# cv2.drawContours(img_1, contours, -1, (0, 0, 255), 2)
+img_th = cv2.medianBlur(img_th, 5)
 
-# # 画像を生成
-# cv2.imwrite("./result.png", img_1)
+# 有効領域マスクを作成
+if homo_matrix is not None:
+    mask = np.full(img_2.shape[:2], 255, dtype=np.uint8)
+    warped_mask = cv2.warpPerspective(
+        mask, homo_matrix, (img_2.shape[1], img_2.shape[0])
+    )
+    # マスクを収縮させて削る面積を増やす
+    warped_mask = cv2.erode(warped_mask, (5, 5), iterations=10)
+    # 二値画像の余白を黒で塗りつぶす
+    img_th[warped_mask == 0] = 0
+
+if DEBUG:
+    cv2.imwrite("after.png", img_th)
+
+# 輪郭を検出
+contours, hierarchy = cv2.findContours(
+    img_th, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+)
+
+# 閾値以上の差分を四角で囲う
+# for i, cnt in enumerate(contours):
+#     x, y, width, height = cv2.boundingRect(cnt)
+#     if width > 20 or height > 20:
+#         cv2.rectangle(img_1, (x, y), (x + width, y + height), (0, 0, 255), 2)
+cv2.drawContours(aligned_img_1, contours, -1, (0, 0, 255), 2)
+
+# 画像を生成
+cv2.imwrite("./result.png", aligned_img_1)
