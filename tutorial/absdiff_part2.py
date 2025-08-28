@@ -9,8 +9,8 @@ import cv2, os
 import numpy as np
 
 
-img_1 = cv2.imread("./img/set2_a.png")
-img_2 = cv2.imread("./img/set2_b.png")
+img_1 = cv2.imread("../img/set2_a.png")
+img_2 = cv2.imread("../img/set2_b.png")
 
 height = img_1.shape[0]
 width = img_1.shape[1]

@@ -9,8 +9,8 @@ import numpy as np
 
 
 # 画像読み込み
-img_1 = cv2.imread("./img/set2_a.png")
-img_2 = cv2.imread("./img/set2_b.png")
+img_1 = cv2.imread("../img/set2_a.png")
+img_2 = cv2.imread("../img/set2_b.png")
 
 # print(img_1.shape)
 # print(img_2.shape)

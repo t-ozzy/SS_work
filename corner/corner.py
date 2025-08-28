@@ -1,8 +1,8 @@
 import cv2
 import numpy as np
 
-img_1 = cv2.imread("./img/set2_a.png")
-img_2 = cv2.imread("./img/set2_b.png")
+img_1 = cv2.imread("../img/set2_a.png")
+img_2 = cv2.imread("../img/set2_b.png")
 
 if img_1.shape != img_2.shape:
     img_2 = cv2.resize(img_2, (img_1.shape[1], img_1.shape[0]))

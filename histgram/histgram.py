@@ -2,14 +2,15 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def save_histogram(hist_b, hist_g, hist_r, filename):
     plt.figure()
     plt.title("Histogram")
     plt.xlabel("Pixel value")
     plt.ylabel("Frequency")
-    plt.plot(hist_b, color='b', label='Blue')
-    plt.plot(hist_g, color='g', label='Green')
-    plt.plot(hist_r, color='r', label='Red')
+    plt.plot(hist_b, color="b", label="Blue")
+    plt.plot(hist_g, color="g", label="Green")
+    plt.plot(hist_r, color="r", label="Red")
     plt.xlim([0, 256])
     plt.legend()
     plt.tight_layout()
@@ -17,16 +18,15 @@ def save_histogram(hist_b, hist_g, hist_r, filename):
     plt.close()
 
 
-
-img_a = cv2.imread("./img/set2_a.png")
-img_b = cv2.imread("./img/set2_b.png")
+img_a = cv2.imread("../img/set2_a.png")
+img_b = cv2.imread("../img/set2_b.png")
 print(img_a.shape)
 print(img_b.shape)
 
 # 画像サイズの統一
 height = img_b.shape[0]
 width = img_b.shape[1]
-img_a = cv2.resize(img_a , (int(width), int(height)))
+img_a = cv2.resize(img_a, (int(width), int(height)))
 
 # ヒストグラム計算
 hist_a_b = cv2.calcHist([img_a], [0], None, [256], [0, 256])
