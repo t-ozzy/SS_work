@@ -2,23 +2,10 @@ import cv2
 import numpy as np
 import sys
 import matplotlib.pyplot as plt
+from scipy.spatial import cKDTree
+from sklearn.cluster import DBSCAN
 
 DEBUG = "--debug" in sys.argv
-
-
-def compositeGrayImg(overlay, background, alpha=0.5):
-    # overlay画像をbackgroundと同じサイズにリサイズ
-    overlay = cv2.resize(overlay, (background.shape[1], background.shape[0]))
-
-    # 画像をfloat型に変換（計算のため）
-    overlay = overlay.astype(float)
-    background = background.astype(float)
-
-    # 合成処理（アルファブレンディング）
-    blended = background * (1 - alpha) + overlay * alpha
-
-    # 結果をuint8型に戻す
-    return blended.astype(np.uint8)
 
 
 def compositeImg(overlay, background, alpha=0.5):
@@ -164,66 +151,60 @@ gray_2 = cv2.GaussianBlur(gray_2, (15, 15), 0)
 if DEBUG:
     cv2.imwrite("blur_1.png", gray_1)
     cv2.imwrite("blur_2.png", gray_2)
-    blur_1_dark = cv2.convertScaleAbs(gray_1, alpha=1.0, beta=-50)
-    cv2.imwrite("blur_1_dark.png", blur_1_dark)
-    blur_1_dark = cv2.convertScaleAbs(gray_1, alpha=1.0, beta=50)
-    cv2.imwrite("blur_1_dark_2.png", blur_1_dark)
-    blur_1_dark = cv2.convertScaleAbs(gray_1, alpha=-1.0, beta=-50)
-    cv2.imwrite("blur_1_dark_3.png", blur_1_dark)
-    blur_1_dark = cv2.convertScaleAbs(gray_1, alpha=3.0, beta=50)
-    cv2.imwrite("blur_1_dark_4.png", blur_1_dark)
 
+diff = gray_1.mean() - gray_2.mean()
+gray_1 = cv2.add(gray_1, int(diff))
+gray_2 = cv2.add(gray_2, int(diff))
 
-# # コントラスト限定適応ヒストグラム平坦化
-# clahe = cv2.createCLAHE(clipLimit=8.1, tileGridSize=(8, 8))
-# gray_1 = clahe.apply(gray_1)
-# gray_2 = clahe.apply(gray_2)
-# # gray_1 = cv2.equalizeHist(gray_1)
-# # gray_2 = cv2.equalizeHist(gray_2)
-# if DEBUG:
-#     cv2.imwrite("clahe_1.png", gray_1)
-#     cv2.imwrite("clahe_2.png", gray_2)
+corners_1 = cv2.goodFeaturesToTrack(
+    image=gray_1, maxCorners=200, qualityLevel=0.01, minDistance=10
+)
+corner_points_1 = corners_1.reshape(-1, 2)
+corners_2 = cv2.goodFeaturesToTrack(
+    image=gray_2, maxCorners=200, qualityLevel=0.01, minDistance=10
+)
+corner_points_2 = corners_2.reshape(-1, 2)
 
-# # 画像を引き算
-# img_diff = cv2.absdiff(gray_1, gray_2)
-# if DEBUG:
-#     cv2.imwrite("diff.png", img_diff)
+tree_1 = cKDTree(corner_points_1)
+tree_2 = cKDTree(corner_points_2)
+print(corner_points_1.shape[0], corner_points_2.shape[0])
 
-# # 2値化
-# # img_th = cv2.adaptiveThreshold(
-# #     img_diff, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
-# # )
-# _, img_th = cv2.threshold(img_diff, 40, 255, cv2.THRESH_BINARY)  # 閾値40は手作業
-# if DEBUG:
-#     cv2.imwrite("th.png", img_th)
+results_1 = tree_1.query_ball_point(corner_points_2, 10)
+results_2 = tree_2.query_ball_point(corner_points_1, 10)
 
-# img_th = cv2.medianBlur(img_th, 5)
+last_result = []
+for i, neighbors in enumerate(results_1):
+    if not neighbors:  # 空リストならTrue
+        last_result.append(corner_points_2[i])
+for i, neighbors in enumerate(results_2):
+    if not neighbors:  # 空リストならTrue
+        last_result.append(corner_points_1[i])
+# print(last_result)
 
-# # 有効領域マスクを作成
-# if homo_matrix is not None:
-#     mask = np.full(img_2.shape[:2], 255, dtype=np.uint8)
-#     warped_mask = cv2.warpPerspective(
-#         mask, homo_matrix, (img_2.shape[1], img_2.shape[0])
-#     )
-#     # マスクを収縮させて削る面積を増やす
-#     warped_mask = cv2.erode(warped_mask, (5, 5), iterations=10)
-#     # 二値画像の余白を黒で塗りつぶす
-#     img_th[warped_mask == 0] = 0
+# # last_resultの座標をimg_1に描画
+# aligned_img_1_marked = aligned_img_1.copy()
+# for pt in last_result:
+#     x, y = int(pt[0]), int(pt[1])
+#     cv2.circle(aligned_img_1_marked, (x, y), 5, (0, 0, 255), -1)  # 半径5の赤丸
 
-# if DEBUG:
-#     cv2.imwrite("after.png", img_th)
+# cv2.imwrite("last_result_points.png", aligned_img_1_marked)
 
-# # 輪郭を検出
-# contours, hierarchy = cv2.findContours(
-#     img_th, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-# )
+# last_resultをNumPy配列に変換
+if len(last_result) > 0:
+    last_result_np = np.array(last_result)
 
-# # 閾値以上の差分を四角で囲う
-# # for i, cnt in enumerate(contours):
-# #     x, y, width, height = cv2.boundingRect(cnt)
-# #     if width > 20 or height > 20:
-# #         cv2.rectangle(img_1, (x, y), (x + width, y + height), (0, 0, 255), 2)
-# cv2.drawContours(img_1, contours, -1, (0, 0, 255), 2)
+    # DBSCANでクラスタリング
+    db = DBSCAN(eps=25, min_samples=2).fit(last_result_np)
+    labels = db.labels_
 
-# # 画像を生成
-# cv2.imwrite("./result.png", img_1)
+    # クラスタごとに赤色で描画（ノイズは描画しない）
+    clustered_img = aligned_img_1.copy()
+    for pt, label in zip(last_result_np, labels):
+        if label == -1:
+            continue  # ノイズは描画しない
+        x, y = int(pt[0]), int(pt[1])
+        cv2.circle(clustered_img, (x, y), 5, (0, 0, 255), -1)  # 赤色
+
+    cv2.imwrite("last_result_dbscan.png", clustered_img)
+else:
+    cv2.imwrite("last_result_dbscan.png", aligned_img_1)
