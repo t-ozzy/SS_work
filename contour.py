@@ -124,8 +124,8 @@ def gamma_correction(img, gamma=1.2):
 
 
 # 画像を読み込む
-img_1 = cv2.imread("./img/color_1.png")
-img_2 = cv2.imread("./img/color_2.png")
+img_1 = cv2.imread("./img/set2_a.png")
+img_2 = cv2.imread("./img/set2_b.png")
 if img_1.shape != img_2.shape:
     img_1 = cv2.resize(img_1, (img_2.shape[1], img_2.shape[0]))
 
@@ -189,30 +189,38 @@ for i, neighbors in enumerate(results_2):
         last_result.append(corner_points_1[i])
 # print(last_result)
 
-# last_resultの座標をimg_1に描画
-aligned_img_1_marked = aligned_img_1.copy()
-for pt in last_result:
-    x, y = int(pt[0]), int(pt[1])
-    cv2.circle(aligned_img_1_marked, (x, y), 5, (0, 0, 255), -1)  # 半径5の赤丸
+# # last_resultの座標をimg_1に描画
+# aligned_img_1_marked = aligned_img_1.copy()
+# for pt in last_result:
+#     x, y = int(pt[0]), int(pt[1])
+#     cv2.circle(aligned_img_1_marked, (x, y), 5, (0, 0, 255), -1)  # 半径5の赤丸
 
-cv2.imwrite("last_result_points.png", aligned_img_1_marked)
+# cv2.imwrite("last_result_points.png", aligned_img_1_marked)
 
 # last_resultをNumPy配列に変換
 if len(last_result) > 0:
     last_result_np = np.array(last_result)
-
-    # DBSCANでクラスタリング
     db = DBSCAN(eps=25, min_samples=2).fit(last_result_np)
     labels = db.labels_
 
-    # クラスタごとに赤色で描画（ノイズは描画しない）
     clustered_img = aligned_img_1.copy()
-    for pt, label in zip(last_result_np, labels):
-        if label == -1:
-            continue  # ノイズは描画しない
-        x, y = int(pt[0]), int(pt[1])
-        cv2.circle(clustered_img, (x, y), 10, (255, 0, 0), -1)  # 赤色
+    mask = np.zeros(aligned_img_1.shape[:2], dtype=np.uint8)
 
-    cv2.imwrite("last_result_dbscan.png", clustered_img)
+    n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+    for cluster_id in range(n_clusters):
+        cluster_points = last_result_np[labels == cluster_id]
+        if len(cluster_points) < 3:
+            continue  # ポリゴンにならない場合はスキップ
+
+        # 凸包を計算
+        hull = cv2.convexHull(cluster_points.astype(np.int32))
+        # 領域をマスクに塗りつぶし
+        cv2.fillPoly(mask, [hull], 255)
+        # 可視化用に色をつける
+        color = tuple(np.random.randint(0, 255, 3).tolist())
+        cv2.polylines(clustered_img, [hull], isClosed=True, color=color, thickness=2)
+
+    cv2.imwrite("clustered_mask.png", mask)
+    cv2.imwrite("clustered_polygons.png", clustered_img)
 else:
     cv2.imwrite("last_result_dbscan.png", aligned_img_1)

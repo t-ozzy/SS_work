@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import sys
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 DEBUG = "--debug" in sys.argv
 
@@ -65,7 +66,7 @@ def alignImages(target_img, reference_img, good_match_ratio=0.15, min_matches=10
             keypoints_1,
             target_img,
             keypoints_2,
-            matches[:20],
+            matches[:50],
             None,
             flags=2,
         )
@@ -154,38 +155,16 @@ if DEBUG:
     plot_histograms(aligned_img_1, prefix="aligned_img_1")
     plot_histograms(img_2, prefix="img_2")
 
-# hsv1[..., 1] = np.clip(hsv1[..., 1] * 1.5, 0, 255)  # 彩度を1.5倍に
-
-# hsv2[..., 1] = np.clip(hsv2[..., 1] * 1.5, 0, 255)  # 彩度を1.5倍に
-
-# s_img_1 = cv2.cvtColor(aligned_img_1, cv2.COLOR_BGR2HSV)
-# s_img_2 = cv2.cvtColor(img_2, cv2.COLOR_BGR2HSV)
-# s_img_1[:, :, 1] = 250
-# s_img_2[:, :, 1] = 250
-# c_aligned_img_1 = cv2.cvtColor(s_img_1, cv2.COLOR_HSV2BGR)
-# c_img_2 = cv2.cvtColor(s_img_2, cv2.COLOR_HSV2BGR)
-
 # グレースケール変換
 gray_1 = cv2.cvtColor(aligned_img_1, cv2.COLOR_BGR2GRAY)
 gray_2 = cv2.cvtColor(img_2, cv2.COLOR_BGR2GRAY)
 
-# # ノイズ除去
-# gray_1 = cv2.GaussianBlur(gray_1, (15, 15), 0)
-# gray_2 = cv2.GaussianBlur(gray_2, (15, 15), 0)
-# if DEBUG:
-#     cv2.imwrite("blur_1.png", gray_1)
-#     cv2.imwrite("blur_2.png", gray_2)
-
-edges_1 = cv2.Canny(gray_1, threshold1=40, threshold2=150)
-edges_2 = cv2.Canny(gray_2, threshold1=40, threshold2=150)
-edges_result = cv2.absdiff(edges_2, edges_1)
-cv2.imwrite("edges_diff.png", edges_result)
-
-# tmp = gray_1.copy()
-# mask = np.full(img_2.shape[:2], 255, dtype=np.uint8)
-# warped_mask = cv2.warpPerspective(mask, homo_matrix, (img_2.shape[1], img_2.shape[0]))
-# warped_mask = cv2.erode(warped_mask, (5, 5), iterations=10)
-# tmp[warped_mask == 0] = 0
+# ノイズ除去
+gray_1 = cv2.GaussianBlur(gray_1, (15, 15), 0)
+gray_2 = cv2.GaussianBlur(gray_2, (15, 15), 0)
+if DEBUG:
+    cv2.imwrite("blur_1.png", gray_1)
+    cv2.imwrite("blur_2.png", gray_2)
 
 # コントラスト限定適応ヒストグラム平坦化
 # gray_1 = cv2.equalizeHist(tmp)
@@ -213,6 +192,8 @@ if DEBUG:
 
 img_th = cv2.medianBlur(img_th, 5)
 
+warped_mask = None
+
 # 有効領域マスクを作成
 if homo_matrix is not None:
     mask = np.full(img_2.shape[:2], 255, dtype=np.uint8)
@@ -232,12 +213,15 @@ contours, hierarchy = cv2.findContours(
     img_th, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
 )
 
+
 # 閾値以上の差分を四角で囲う
 # for i, cnt in enumerate(contours):
 #     x, y, width, height = cv2.boundingRect(cnt)
 #     if width > 20 or height > 20:
 #         cv2.rectangle(img_1, (x, y), (x + width, y + height), (0, 0, 255), 2)
 cv2.drawContours(aligned_img_1, contours, -1, (0, 0, 255), 2)
+cv2.drawContours(img_2, contours, -1, (0, 0, 255), 2)
 
 # 画像を生成
-cv2.imwrite("./result.png", aligned_img_1)
+cv2.imwrite("./result_1.png", aligned_img_1)
+cv2.imwrite("./result_2.png", img_2)
