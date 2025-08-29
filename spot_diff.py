@@ -141,6 +141,14 @@ if DEBUG:
     plot_histograms(aligned_img_1, prefix="aligned_img_1")
     plot_histograms(img_2, prefix="img_2")
 
+# hsv1 = cv2.cvtColor(aligned_img_1, cv2.COLOR_BGR2HSV)
+# hsv1[..., 1] = np.clip(hsv1[..., 1] * 1.5, 0, 255)  # 彩度を1.5倍に
+# aligned_img_1 = cv2.cvtColor(hsv1, cv2.COLOR_HSV2BGR)
+
+# hsv2 = cv2.cvtColor(img_2, cv2.COLOR_BGR2HSV)
+# hsv2[..., 1] = np.clip(hsv2[..., 1] * 1.5, 0, 255)  # 彩度を1.5倍に
+# img_2 = cv2.cvtColor(hsv2, cv2.COLOR_HSV2BGR)
+
 # グレースケール変換
 gray_1 = cv2.cvtColor(aligned_img_1, cv2.COLOR_BGR2GRAY)
 gray_2 = cv2.cvtColor(img_2, cv2.COLOR_BGR2GRAY)

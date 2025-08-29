@@ -162,8 +162,8 @@ h_img_2 = cv2.cvtColor(img_2, cv2.COLOR_BGR2HSV)
 # h_img_1[:, :, 2] = 127
 # h_img_2[:, :, 1] = 127
 # h_img_2[:, :, 2] = 127
-h_img_1[:, :, 0] = 127
-h_img_2[:, :, 0] = 127
+# h_img_1[:, :, 0] = 127
+# h_img_2[:, :, 0] = 127
 if DEBUG:
     cv2.imwrite("h_1.png", h_img_1)
     cv2.imwrite("h_2.png", h_img_2)
