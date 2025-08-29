@@ -154,23 +154,45 @@ if DEBUG:
     plot_histograms(aligned_img_1, prefix="aligned_img_1")
     plot_histograms(img_2, prefix="img_2")
 
+# hsv1[..., 1] = np.clip(hsv1[..., 1] * 1.5, 0, 255)  # 彩度を1.5倍に
+
+# hsv2[..., 1] = np.clip(hsv2[..., 1] * 1.5, 0, 255)  # 彩度を1.5倍に
+
+# s_img_1 = cv2.cvtColor(aligned_img_1, cv2.COLOR_BGR2HSV)
+# s_img_2 = cv2.cvtColor(img_2, cv2.COLOR_BGR2HSV)
+# s_img_1[:, :, 1] = 250
+# s_img_2[:, :, 1] = 250
+# c_aligned_img_1 = cv2.cvtColor(s_img_1, cv2.COLOR_HSV2BGR)
+# c_img_2 = cv2.cvtColor(s_img_2, cv2.COLOR_HSV2BGR)
+
 # グレースケール変換
 gray_1 = cv2.cvtColor(aligned_img_1, cv2.COLOR_BGR2GRAY)
 gray_2 = cv2.cvtColor(img_2, cv2.COLOR_BGR2GRAY)
 
-# ノイズ除去
-gray_1 = cv2.GaussianBlur(gray_1, (15, 15), 0)
-gray_2 = cv2.GaussianBlur(gray_2, (15, 15), 0)
-if DEBUG:
-    cv2.imwrite("blur_1.png", gray_1)
-    cv2.imwrite("blur_2.png", gray_2)
+# # ノイズ除去
+# gray_1 = cv2.GaussianBlur(gray_1, (15, 15), 0)
+# gray_2 = cv2.GaussianBlur(gray_2, (15, 15), 0)
+# if DEBUG:
+#     cv2.imwrite("blur_1.png", gray_1)
+#     cv2.imwrite("blur_2.png", gray_2)
+
+edges_1 = cv2.Canny(gray_1, threshold1=40, threshold2=150)
+edges_2 = cv2.Canny(gray_2, threshold1=40, threshold2=150)
+edges_result = cv2.absdiff(edges_2, edges_1)
+cv2.imwrite("edges_diff.png", edges_result)
+
+# tmp = gray_1.copy()
+# mask = np.full(img_2.shape[:2], 255, dtype=np.uint8)
+# warped_mask = cv2.warpPerspective(mask, homo_matrix, (img_2.shape[1], img_2.shape[0]))
+# warped_mask = cv2.erode(warped_mask, (5, 5), iterations=10)
+# tmp[warped_mask == 0] = 0
 
 # コントラスト限定適応ヒストグラム平坦化
+# gray_1 = cv2.equalizeHist(tmp)
+# gray_2 = cv2.equalizeHist(gray_2)
 clahe = cv2.createCLAHE(clipLimit=0.1, tileGridSize=(8, 8))
 gray_1 = clahe.apply(gray_1)
 gray_2 = clahe.apply(gray_2)
-# gray_1 = cv2.equalizeHist(gray_1)
-# gray_2 = cv2.equalizeHist(gray_2)
 if DEBUG:
     cv2.imwrite("clahe_1.png", gray_1)
     cv2.imwrite("clahe_2.png", gray_2)
@@ -185,6 +207,7 @@ if DEBUG:
 #     img_diff, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
 # )
 _, img_th = cv2.threshold(img_diff, 40, 255, cv2.THRESH_BINARY)  # 閾値40は手作業
+# _, img_th = cv2.threshold(img_diff, 0, 255, cv2.THRESH_OTSU)
 if DEBUG:
     cv2.imwrite("th.png", img_th)
 
